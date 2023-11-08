@@ -1,5 +1,6 @@
 package com.jpa.jpaboilerplate.domain;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.jpa.jpaboilerplate.domain.item.Item;
 import jakarta.persistence.*;
 import lombok.Getter;

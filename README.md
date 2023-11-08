@@ -1,13 +1,3 @@
-### toString, JSON, lombok toString 사용시 주의 사항
-
-```
-- stackOverFlow 예외가 발생할 수 있는데 이유는 연관관계 매핑시 양방향 연관관계인 경우
-  - toString 에서 서로를 계속 참조하기 때문에
-- JSON 사용시 문제가 발생하는 경우는 컨트롤러에서 엔티티 객체를 응답으로 전달할 때
-  - JSON 으로 변환하면서 위 와 같은 구조로 에러가 발생할 수 있음
-    그러므로 엔티티는 절대 반환에 사용하지말고 DTO 로 구분하여 반환하는 것을 권장
-```
-
 ### 연관관계 주인 설정
 
 ```
@@ -196,4 +186,121 @@ merge 메커니즘은 전달 받은 객체에 있는 id 필드로 DB 를 조회�
 
 변경 감지 == dirty checking
 준영속 엔티티에 대해 setter 로 값을 변경할 경우 실제로 업데이트 쿼리는 호출되지 않는다
+```
+
+### Entity 주의 사항
+
+#### @JsonIgnore
+
+```
+양방향 연관관계가 설정된 엔티티가 있는데 해당 엔티티를 응답 객체로 노출한 경우
+A 에서 json 으로 변환하다가 B 를 발견하고 B 객체로 가서 json 으로 다시 A 로 무한 루프
+결국 한쪽을 @JsonIgnore 로 해결할 수 있지만 엔티티는 애초에 응답에 노출하지 않아야 한다
+```
+
+#### toString 사용시 주의 사항
+
+```
+stackOverFlow 예외가 발생할 수 있는데 이유는 연관관계 매핑시 양방향 연관관계인 경우
+toString 에서 서로를 계속 참조하기 때문에
+```
+
+#### API 프로젝트 개발할 때 엔티티를 절대로 파라미터나 응답 객체로 사용하지 말 것
+
+```
+엔티티를 노출하고 있는데 엔티티의 필드명을 바꾸게 되면 API 명세가 바뀌게 될 수 있다
+
+예를 들어서 Member 엔티티를 내보내려고 할 때 사용자가 원하는 정보는 단순히 Member 정보인경우
+연관관계에 있는 필드가 널 값으로 포함되어 출력된다
+```
+
+### 조회 성능 최적화
+
+```
+Entity to DTO
+1 + N to fetch = lazy
+일반적인 join fetch vs 레파지토리 DTO 직접 반환
+
+쿼리 방식 선택 권장 순서
+1.Entity to DTO
+2.필요한 경우 fetch join 추가
+3.DTO 직접 조회
+4.JPA 에서 제공하는 네이티브 SQL, Spring JDBC Template SQL 직접 사용
+
+
+-------- 최종
+
+엔티티 조회 방식 접근
+    페치 조인으로 쿼리 수 최적화
+    컬레션 최적화
+        페이징 필요한 경우 hibernate.default_batch_fetch_size, @BatchSize
+        페이징 X 경우 페치 조인 사용
+엔티티 조회 방식으로 해결이 안될 경우 DTO 조회
+DTO 조회로 해결이 안될 경우 NativeSQL, Spring JdbcTemplate
+```
+
+### distinct
+
+```
+중요: 컬렉션 페치 조인을 사용하는 경우 페이징이 불가능함
+
+데이터 베이스 기준 1대N 조인이 있으면 데이터베이스가 조인할 때 당연히 row 수가 증가 되는데
+엔티티가 증가되는건 우리가 원하는 결과가 아니며 이를 위해 distinct 를 추가하면
+같은 엔티티가 조회될 경우 애플리케이션에서 중복을 제거한 후 결과 값을 리턴 해준다
+
+Starting with Hibernate 6, distinct is always passed to the SQL query and the flag 
+QueryHints#HINT_PASS_DISTINCT_THROUGH has been removed.
+
+강의에서 확인했을 당시 hibernate 버전이 6 아래였고 중복되는 데이터를 막기 위해
+JPQL 안에 distinct 를 사용했으나 이 후 버전에 대해서는 항상 자동 적용된다
+```
+
+### 1대N 페치 조인시 페이징
+
+```
+위 distinct 를 사용하게 된 이유 처럼 일반적으로 fetch 조인을 진행한 경우
+row 수가 증가되며 우리가 원하는 데이터가 아니고 distinct 를 적용해서 중복을 제거하는데
+setFirstResult(), setMaxResults() 를 사용하면 DB에 이를 호출할 수 없어서
+
+WARN: firstResult/maxResults specified with collection fetch; applying in memory
+위 와 같이 메시지가 출력되고 메모리에서 실행을 시도하며 이게 데이터가 많은 경우
+큰 문제가 발생할 수 있으므로 1대N 에 fetch 조인을 사용한 경우 페이징 메서드를 호출하는걸 권장하지 않는다
+```
+
+### 1대N 페치 조인시 페이징 해결 방안 
+
+```
+우선 문제가 발생하는 건 ToMany 에서 발생하므로 ToOne 에 대해서는 동일하게 fetch 조인을 JPQL 로 세팅한다
+hibernate.default_batch_fetch_size: 숫자 또는 @BatchSize(size = 숫자) 설정
+이 후 사용할 때 lazy 설정으로 그래프 탐색 시 N+1 문제가 발생하는게 아니며
+위 옵션들은 SQL 에서 in 절을 생성해주고 숫자는 하나의 in 절 쿼리에 집어넣을 엔티티 식별 값(id) 개수를 의미한다
+예시로 해당 프로젝트에서 Order - OrderItem - Item 의 1:N:M 의 연관 관계가 있을 때 위 설정 값을 적용하고
+쿼리는 (Order)1, (OrderItem)1, (Item)1 총 3건이 나간다
+물론 위 기능의 숫자 내에 데이터가 존재하는 경우 그 이상이면 입력한 숫자로 나눈 값 + 1 수만큼 쿼리
+
+참고로 hibernate.default_batch_fetch_size 설정은 application.properties(yml) 에 설정하면 되고
+@BatchSize 는 ToMany 의 경우 해당 엔티티의 연관관계 필드에다가 적용해주고
+ToOne 의 경우는 One 의 대상 클래스의 @Entity 선언되어있는 곳에 선언하여 적용해야한다
+
+설정 값은 1 ~ 1000(Max) 인데 100 500 1000 사이로 설정하고 너무 작게만 설정하지 않으면 크게 고민할필요가 없다
+```
+
+### 1 대 N 대 N 페치 조인은 사용 금지
+
+```
+데이터가 부정합할 수 있고 심지어 Hibernate 에서도 사용은 가능하나 둘 이상의 fetch 조인에 대해
+경고 메시지를 출력하니 다른 방법으로 풀어야 한다
+```
+
+### 캐시를 사용하는 경우
+
+```
+엔티티는 영속성 컨텍스트에서 관리되는데 엔티티를 캐시에 등록할 경우 데이터가 꼬일 수 있으니
+캐시를 사용할 때도 DTO 를 통해서 저장하는 방식으로 사용해야 한다
+```
+
+### OSIV
+
+```
+
 ```
