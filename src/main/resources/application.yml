@@ -7,6 +7,7 @@ spring:
 
   jpa:
     hibernate:
+      # 운영 단계에서는 ddl-auto 를 지우고 아예 사용도 하지 말 것
       ddl-auto: create
     properties:
       hibernate:
@@ -16,15 +17,10 @@ spring:
         persistence:
           sharedCache:
             mode: ALL
-    # 해당 옵션을 false 설정할 경우 트렌잭션 단위로 조회가 가능하고
-    # 현재 프로젝트에서 service 단위에 설정하여 컨트롤러에선 영속성 조회가 안될 수 있음
+    # true: 요청 부터 응답 하기 직전까지 영속성 컨텍스트, DB 커넥션 유지
+    # false: 트렌젝션(@Transaction)이 설정된 시점까지 영속성 컨텍스트, DB 커넥션
     open-in-view: true
-
-  thymeleaf:
-    prefix: classpath:/templates/
-    suffix: .html
 
 logging:
   level:
     org.hibernate.SQL: debug
-
