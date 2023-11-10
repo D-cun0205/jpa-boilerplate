@@ -9,7 +9,7 @@ import lombok.*;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 // 연관 관계 설정된 필드 넣지 말 것
 @ToString(of = {"id", "username", "age"})
-public class Member {
+public class Member extends BaseEntity {
 
     @Id
     @GeneratedValue
