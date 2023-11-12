@@ -428,3 +428,10 @@ ex: QMember member = new QMember("m1"), QMember member = new QMember("m2")
 ```
 MemberRepositoryImpl.findMemberCustom() 메서드 확인
 ```
+
+### application 분리, 데이터 초기 세팅 작업
+
+```
+main, test 에 application.yml 상단에 active 확인
+데이터 초기 작업은 InitMember 클래스 확인
+```
