@@ -1,4 +1,6 @@
 spring:
+  profiles:
+    active: test
 ########## Spring Boot 를 사용하면 해당 옵션이 없을 경우 기본적으로 인메모리를 사용
 #  datasource:
 #    url: jdbc:h2:mem:test

@@ -1,4 +1,9 @@
 spring:
+  profiles:
+    active: local
+#    active: develop // 개발 서버
+#    active: real // 운영 서버
+
   datasource:
     url: jdbc:h2:tcp://localhost/~/test
     username: sa
@@ -13,11 +18,12 @@ spring:
       hibernate:
 #        show_sql: true
         format_sql: true
+        use_sql_comments: true
       jakarta:
         persistence:
           sharedCache:
             mode: ALL
-    # true: 요청 부터 응답 하기 직전까지 영속성 컨텍스트, DB 커넥션 유지
+    # true(default): 요청 부터 응답 하기 직전까지 영속성 컨텍스트, DB 커넥션 유지
     # false: 트렌젝션(@Transaction)이 설정된 시점까지 영속성 컨텍스트, DB 커넥션
     open-in-view: true
 
