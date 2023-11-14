@@ -1,6 +1,7 @@
 package com.jpa.jpaboilerplate.repository;
 
 import com.jpa.jpaboilerplate.dto.MemberTeamDto;
+import com.jpa.jpaboilerplate.entity.Member;
 import com.jpa.jpaboilerplate.entity.MemberSearchCondition;
 import com.jpa.jpaboilerplate.repository.support.QuerydslRepositorySupportCustom;
 import com.querydsl.core.types.dsl.BooleanExpression;
@@ -11,8 +12,8 @@ import static com.jpa.jpaboilerplate.entity.QMember.member;
 import static com.jpa.jpaboilerplate.entity.QTeam.team;
 
 public class MemberRepositoryImpl extends QuerydslRepositorySupportCustom implements MemberRepositoryCustom {
-    public MemberRepositoryImpl(Class<?> domainClass) {
-        super(domainClass);
+    public MemberRepositoryImpl() {
+        super(Member.class);
     }
 
     public Page<MemberTeamDto> searchMemberCustom(MemberSearchCondition condition, Pageable pageable) {
